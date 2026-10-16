@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebArchive Crawler – Archive History</title>
+  <link rel="icon" href="icons/icon128.png" type="image/png" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --line: #d8dbe2;
+      --text: #1d1d1f;
+      --muted: #667085;
+      --accent: #0a7cff;
+      --success: #1f6f35;
+      --warning-bg: #fff8e8;
+      --warning-line: #f0cf74;
+      --warning-text: #8a5a00;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(180deg, #f9fafb 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .shell {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .hero h1 {
+      font-size: 28px;
+      letter-spacing: -0.4px;
+    }
+
+    .hero p {
+      margin-top: 8px;
+      color: var(--muted);
+      max-width: 620px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .actions button {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .actions button:hover {
+      background: #f7f9fc;
+      border-color: #c2c8d0;
+    }
+
+    .actions button.primary {
+      background: linear-gradient(135deg, #0a7cff 0%, #2d8dff 100%);
+      border-color: #0a7cff;
+      color: #fff;
+      box-shadow: 0 14px 24px rgba(10, 124, 255, 0.16);
+    }
+
+    .actions button.primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #056fe3 0%, #2385fa 100%);
+      border-color: #056fe3;
+    }
+
+    .actions button:disabled {
+      opacity: 0.58;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .notice,
+    .summary,
+    .empty,
+    .error {
+      background: var(--card);
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+
+    .notice {
+      background: var(--warning-bg);
+      border-color: var(--warning-line);
+      color: var(--warning-text);
+      line-height: 1.45;
+    }
+
+    .notice strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #7a4f00;
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .summary h2 {
+      font-size: 15px;
+    }
+
+    .summary p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .summary .bundle-hint {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .history-search {
+      width: min(360px, 100%);
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+
+    .history-search:focus-visible { outline: 3px solid rgba(10, 124, 255, 0.28); outline-offset: 2px; border-color: var(--accent); }
+
+    .list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .archive-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .archive-main {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .archive-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .archive-favicon-shell {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .archive-favicon {
+      width: 22px;
+      height: 22px;
+      display: block;
+      object-fit: contain;
+    }
+
+    .archive-copy {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .archive-link,
+    .archive-link:visited {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 17px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .archive-link:hover {
+      text-decoration: underline;
+    }
+
+    .archive-meta,
+    .archive-path {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .archive-pathBtn {
+      padding: 0;
+      border: none;
+      background: transparent;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      width: 100%;
+      color: #5f7190;
+      transition: color 0.14s;
+    }
+
+    .archive-pathBtn:hover:not(:disabled) {
+      color: #0a67d1;
+      text-decoration: underline;
+    }
+
+    .archive-pathBtn:disabled {
+      cursor: default;
+      color: #98a2b3;
+      text-decoration: none;
+    }
+
+    .archive-actions {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      min-width: 360px;
+    }
+
+    .archive-export {
+      position: relative;
+      min-width: 0;
+    }
+
+    .archive-export-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 10;
+      width: 214px;
+      padding: 6px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 14px 28px rgba(25, 35, 53, 0.16);
+    }
+
+    .archive-export-menu[hidden] { display: none; }
+
+    .archive-export-option {
+      width: 100%;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .archive-export-menu .archive-export-option:hover { background: #eef5ff; color: #075cbb; }
+
+    .archive-export-option-icon {
+      width: 16px;
+      text-align: center;
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+
+    .archive-export-caret {
+      margin-left: auto;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .archive-picker {
+      display: inline-flex;
+      grid-column: 1 / -1;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 2px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .archive-picker input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .archive-picker span {
+      line-height: 1.3;
+    }
+
+    .archive-actions > button,
+    .archive-actions > a,
+    .archive-export > button {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .archive-actions > a {
+      background: #eef6ff;
+      border-color: #bdd7ff;
+      color: #0857c5;
+    }
+
+    .archive-actions > button:hover,
+    .archive-actions > a:hover,
+    .archive-export > button:hover {
+      background: #f6f8fb;
+    }
+
+    .archive-actions > a:hover {
+      background: #e8f2ff;
+    }
+
+    .archive-actions .danger {
+      background: #fff3f3;
+      border-color: #f2c7c7;
+      color: #b23b3b;
+    }
+
+    .archive-actions .danger:hover {
+      background: #ffe9e9;
+      border-color: #e6b0b0;
+    }
+
+    .archive-actions .disabled {
+      pointer-events: none;
+      background: #f4f5f7;
+      border-color: #e1e4ea;
+      color: #7c8698;
+    }
+
+    .archive-action-icon {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      margin-top: 10px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #edf7ef;
+      color: var(--success);
+    }
+
+    .status-badge.missing {
+      background: #fff0f0;
+      color: #b23b3b;
+    }
+
+    .empty,
+    .error {
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .error {
+      color: #b23b3b;
+      background: #fff0f0;
+      border-color: #ffd6d6;
+    }
+
+    @media (max-width: 760px) {
+      .hero,
+      .summary,
+      .archive-card {
+        flex-direction: column;
+      }
+
+      .archive-actions {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .archive-actions > button,
+      .archive-actions > a,
+      .archive-export {
+        min-width: 0;
+      }
+
+      .archive-export > button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div>
+        <h1>Archive History</h1>
+        <p>Browse downloaded archives and files opened locally in WebArchive Crawler. Downloaded <code>.webarchive</code> files can be reopened, exported, or packaged into a tabbed <code>.zarc</code> bundle.</p>
+      </div>
+      <div class="actions">
+        <button id="createBundleBtn" class="primary" type="button" disabled>Create .zarc bundle</button>
+        <button id="refreshBtn" type="button">Refresh list</button>
+        <button id="manualOpenBtn" type="button">Open archive manually</button>
+      </div>
+    </section>
+
+    <section class="notice" id="accessNotice" hidden>
+      <strong>Direct opening needs file URL access</strong>
+      Enable <em>Allow access to file URLs</em> for WebArchive Crawler in <code>chrome://extensions</code>, then reload the extension. Without it, Chrome can list your downloaded archives here, but it may block opening them directly in a new tab.
+    </section>
+
+    <section class="summary">
+      <div>
+        <h2>Your archive history</h2>
+        <p id="summaryText">Loading downloaded archives…</p>
+        <p class="bundle-hint" id="bundleHint">Select downloaded <code>.webarchive</code> files to package them into one tabbed <code>.zarc</code> bundle.</p>
+        <input id="historySearch" class="history-search" type="search" placeholder="Search titles, filenames, URLs, and paths…" autocomplete="off" aria-label="Search archive history" />
+      </div>
+    </section>
+
+    <section class="error" id="errorState" hidden></section>
+    <section class="empty" id="emptyState" hidden>No completed <code>.webarchive</code> or <code>.zarc</code> downloads were found yet.</section>
+    <section class="list" id="archiveList"></section>
+  </div>
+
+  <script type="module" src="downloads.js"></script>
+<script src="extension-menu.js"></script>
+</body>
+</html>
